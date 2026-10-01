@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { findStudentByNis, addAttendance, getAttendance, getTodayString, formatTime, generateId } from '../store';
+import { findStudentByNis, addAttendance, getAttendance, getTodayString, formatTime, generateId, getSettings } from '../store';
 import { Student, AttendanceRecord } from '../types';
-import { ScanBarcode, CheckCircle, XCircle, AlertCircle, Clock, User, Hash } from 'lucide-react';
+import { sendWhatsAppNotification, generateArrivalMessage, generateDepartureMessage } from '../whatsapp';
+import { ScanBarcode, CheckCircle, XCircle, AlertCircle, Clock, User, Hash, LogIn, LogOut, MessageCircle } from 'lucide-react';
 
 export default function ScanPage() {
   const [inputValue, setInputValue] = useState('');
@@ -11,23 +12,48 @@ export default function ScanPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [manualMode, setManualMode] = useState(false);
   const [manualStatus, setManualStatus] = useState<'hadir' | 'izin' | 'sakit' | 'alpha'>('hadir');
+  const [absenType, setAbsenType] = useState<'masuk' | 'pulang'>('masuk');
+  const [notifStatus, setNotifStatus] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
   const bufferRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = getTodayString();
+  const settings = getSettings();
 
   useEffect(() => {
     refreshTodayRecords();
   }, []);
 
   useEffect(() => {
-    // Focus input on mount
     inputRef.current?.focus();
   }, []);
 
   const refreshTodayRecords = () => {
     const records = getAttendance().filter(r => r.date === today);
     setTodayRecords(records);
+  };
+
+  const sendNotif = async (student: Student, type: 'masuk' | 'pulang') => {
+    if (!settings.whatsappEnabled || !student.parentPhone) return;
+
+    const shouldNotify = type === 'masuk' ? settings.whatsappNotifyArrival : settings.whatsappNotifyDeparture;
+    if (!shouldNotify) return;
+
+    setNotifStatus('Mengirim notifikasi...');
+    const time = formatTime(new Date());
+    const msg = type === 'masuk'
+      ? generateArrivalMessage(student.name, student.className, settings.schoolName, time, settings.whatsappCustomMessage)
+      : generateDepartureMessage(student.name, student.className, settings.schoolName, time, settings.whatsappCustomMessage);
+
+    const success = await sendWhatsAppNotification(settings, {
+      to: student.parentPhone,
+      message: msg,
+      studentName: student.name,
+      type: type === 'masuk' ? 'arrival' : 'departure',
+    });
+
+    setNotifStatus(success ? '✓ Notifikasi terkirim ke orang tua' : '✗ Gagal mengirim notifikasi');
+    setTimeout(() => setNotifStatus(''), 5000);
   };
 
   const processScan = useCallback((nis: string) => {
@@ -42,17 +68,16 @@ export default function ScanPage() {
       return;
     }
 
-    // Check if already scanned today
-    const alreadyScanned = todayRecords.find(r => r.studentId === student.id);
+    // Check if already scanned for this type today
+    const alreadyScanned = todayRecords.find(r => r.studentId === student.id && r.type === absenType);
     if (alreadyScanned) {
-      setMessage({ type: 'warning', text: `${student.name} sudah absen hari ini pada ${alreadyScanned.time}` });
+      setMessage({ type: 'warning', text: `${student.name} sudah absen ${absenType} hari ini pada ${alreadyScanned.time}` });
       setLastScanned(student);
       setLastRecord(alreadyScanned);
       playSound('warning');
       return;
     }
 
-    // Create attendance record
     const now = new Date();
     const record: AttendanceRecord = {
       id: generateId(),
@@ -63,15 +88,20 @@ export default function ScanPage() {
       time: formatTime(now),
       status: 'hadir',
       method: 'barcode',
+      type: absenType,
+      parentNotified: false,
     };
 
     addAttendance(record);
     setLastScanned(student);
     setLastRecord(record);
-    setMessage({ type: 'success', text: `${student.name} (${student.className}) berhasil absen!` });
+    setMessage({ type: 'success', text: `${student.name} (${student.className}) berhasil absen ${absenType}!` });
     refreshTodayRecords();
     playSound('success');
-  }, [today, todayRecords]);
+
+    // Send WhatsApp notification
+    sendNotif(student, absenType);
+  }, [today, todayRecords, absenType, settings]);
 
   const handleManualAbsen = () => {
     if (!inputValue.trim()) {
@@ -85,9 +115,9 @@ export default function ScanPage() {
       return;
     }
 
-    const alreadyScanned = todayRecords.find(r => r.studentId === student.id);
+    const alreadyScanned = todayRecords.find(r => r.studentId === student.id && r.type === absenType);
     if (alreadyScanned) {
-      setMessage({ type: 'warning', text: `${student.name} sudah absen hari ini!` });
+      setMessage({ type: 'warning', text: `${student.name} sudah absen ${absenType} hari ini!` });
       return;
     }
 
@@ -101,21 +131,25 @@ export default function ScanPage() {
       time: formatTime(now),
       status: manualStatus,
       method: 'manual',
+      type: absenType,
+      parentNotified: false,
     };
 
     addAttendance(record);
     setLastScanned(student);
     setLastRecord(record);
-    setMessage({ type: 'success', text: `${student.name} absen sebagai ${manualStatus.toUpperCase()}` });
+    setMessage({ type: 'success', text: `${student.name} absen ${absenType} - ${manualStatus.toUpperCase()}` });
     setInputValue('');
     refreshTodayRecords();
     playSound('success');
+
+    // Send WhatsApp notification
+    sendNotif(student, absenType);
   };
 
   // USB Barcode Scanner input handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if manual mode input is focused
       if (manualMode && document.activeElement === inputRef.current) return;
 
       if (e.key === 'Enter') {
@@ -133,10 +167,8 @@ export default function ScanPage() {
         bufferRef.current += e.key;
         setInputValue(bufferRef.current);
 
-        // Clear buffer after timeout (scanner sends characters very fast)
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
-          // If buffer has content but no Enter was pressed, it might be manual typing
           if (bufferRef.current.length > 2) {
             processScan(bufferRef.current);
           }
@@ -174,15 +206,14 @@ export default function ScanPage() {
         osc.start();
         osc.stop(ctx.currentTime + 0.2);
       }
-    } catch (e) {
-      // Audio not supported
-    }
+    } catch (e) { /* Audio not supported */ }
   };
 
-  const hadirCount = todayRecords.filter(r => r.status === 'hadir').length;
-  const izinCount = todayRecords.filter(r => r.status === 'izin').length;
-  const sakitCount = todayRecords.filter(r => r.status === 'sakit').length;
-  const alphaCount = todayRecords.filter(r => r.status === 'alpha').length;
+  const masukRecords = todayRecords.filter(r => r.type === 'masuk');
+  const pulangRecords = todayRecords.filter(r => r.type === 'pulang');
+  const hadirCount = masukRecords.filter(r => r.status === 'hadir').length;
+  const izinCount = masukRecords.filter(r => r.status === 'izin').length;
+  const sakitCount = masukRecords.filter(r => r.status === 'sakit').length;
 
   return (
     <div className="space-y-6">
@@ -190,20 +221,53 @@ export default function ScanPage() {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
           <ScanBarcode className="text-emerald-400" />
-          Scan Absensi
+          Scan Absensi Siswa
         </h1>
-        <p className="text-gray-400 mt-1">Scan barcode siswa menggunakan CASHCOW HC-P10 USB atau input manual</p>
+        <p className="text-gray-400 mt-1">Scan barcode siswa menggunakan CASHCOW HC-P10 USB</p>
+      </div>
+
+      {/* Absen Type Toggle */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4">
+        <div className="flex items-center gap-4">
+          <span className="text-gray-400 text-sm">Tipe Absen:</span>
+          <div className="flex bg-gray-800 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setAbsenType('masuk')}
+              className={`px-5 py-2.5 text-sm font-medium flex items-center gap-2 transition-all ${
+                absenType === 'masuk' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <LogIn size={16} /> Masuk
+            </button>
+            <button
+              onClick={() => setAbsenType('pulang')}
+              className={`px-5 py-2.5 text-sm font-medium flex items-center gap-2 transition-all ${
+                absenType === 'pulang' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <LogOut size={16} /> Pulang
+            </button>
+          </div>
+          {settings.whatsappEnabled && (
+            <div className="ml-auto flex items-center gap-2 text-emerald-400 text-sm">
+              <MessageCircle size={16} />
+              <span>Notif WA Aktif</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Scanner Status */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-              <ScanBarcode className="text-emerald-400" size={24} />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              absenType === 'masuk' ? 'bg-emerald-500/20' : 'bg-blue-500/20'
+            }`}>
+              {absenType === 'masuk' ? <LogIn className="text-emerald-400" size={24} /> : <LogOut className="text-blue-400" size={24} />}
             </div>
             <div>
-              <p className="text-white font-semibold">Scanner Barcode Aktif</p>
+              <p className="text-white font-semibold">Mode Absen {absenType === 'masuk' ? 'Masuk' : 'Pulang'}</p>
               <p className="text-sm text-gray-400">Arahkan barcode ke scanner atau ketik NIS</p>
             </div>
           </div>
@@ -212,17 +276,20 @@ export default function ScanPage() {
             <span className="text-emerald-400 text-sm font-medium">Ready</span>
           </div>
         </div>
-
-        {/* Hidden input for scanner */}
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          className="sr-only"
-          autoFocus
-        />
+        <input ref={inputRef} type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} className="sr-only" autoFocus />
       </div>
+
+      {/* Notification Status */}
+      {notifStatus && (
+        <div className={`rounded-xl p-3 flex items-center gap-2 text-sm ${
+          notifStatus.includes('✓') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+          notifStatus.includes('✗') ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
+          'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+        }`}>
+          <MessageCircle size={16} />
+          {notifStatus}
+        </div>
+      )}
 
       {/* Message */}
       {message && (
@@ -244,15 +311,9 @@ export default function ScanPage() {
           <h3 className="text-sm text-gray-400 mb-3">Terakhir Discan</h3>
           <div className="flex items-center gap-4">
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-              lastRecord?.status === 'hadir' ? 'bg-emerald-500/20' :
-              lastRecord?.status === 'izin' ? 'bg-yellow-500/20' :
-              lastRecord?.status === 'sakit' ? 'bg-orange-500/20' : 'bg-red-500/20'
+              absenType === 'masuk' ? 'bg-emerald-500/20' : 'bg-blue-500/20'
             }`}>
-              <User size={32} className={
-                lastRecord?.status === 'hadir' ? 'text-emerald-400' :
-                lastRecord?.status === 'izin' ? 'text-yellow-400' :
-                lastRecord?.status === 'sakit' ? 'text-orange-400' : 'text-red-400'
-              } />
+              <User size={32} className={absenType === 'masuk' ? 'text-emerald-400' : 'text-blue-400'} />
             </div>
             <div>
               <p className="text-xl font-bold text-white">{lastScanned.name}</p>
@@ -261,11 +322,12 @@ export default function ScanPage() {
                 <p className="text-sm mt-1">
                   <Clock size={14} className="inline mr-1" />
                   {lastRecord.time} - <span className={`font-semibold ${
-                    lastRecord.status === 'hadir' ? 'text-emerald-400' :
-                    lastRecord.status === 'izin' ? 'text-yellow-400' :
-                    lastRecord.status === 'sakit' ? 'text-orange-400' : 'text-red-400'
-                  }`}>{lastRecord.status.toUpperCase()}</span>
+                    absenType === 'masuk' ? 'text-emerald-400' : 'text-blue-400'
+                  }`}>{absenType === 'masuk' ? 'MASUK' : 'PULANG'}</span>
                 </p>
+              )}
+              {lastScanned.parentPhone && settings.whatsappEnabled && (
+                <p className="text-xs text-gray-500 mt-1">📱 Ortu: {lastScanned.parentPhone}</p>
               )}
             </div>
           </div>
@@ -327,7 +389,7 @@ export default function ScanPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div className="bg-emerald-500/10 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-emerald-400">{hadirCount}</p>
-            <p className="text-xs text-emerald-400/70">Hadir</p>
+            <p className="text-xs text-emerald-400/70">Hadir Masuk</p>
           </div>
           <div className="bg-yellow-500/10 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-yellow-400">{izinCount}</p>
@@ -337,30 +399,34 @@ export default function ScanPage() {
             <p className="text-2xl font-bold text-orange-400">{sakitCount}</p>
             <p className="text-xs text-orange-400/70">Sakit</p>
           </div>
-          <div className="bg-red-500/10 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-red-400">{alphaCount}</p>
-            <p className="text-xs text-red-400/70">Alpha</p>
+          <div className="bg-blue-500/10 rounded-xl p-4 text-center">
+            <p className="text-2xl font-bold text-blue-400">{pulangRecords.length}</p>
+            <p className="text-xs text-blue-400/70">Sudah Pulang</p>
           </div>
         </div>
 
-        {/* Today's records list */}
+        {/* Today's records */}
         <div className="max-h-64 overflow-y-auto space-y-2">
           {todayRecords.length === 0 ? (
             <p className="text-gray-500 text-center py-4">Belum ada data absensi hari ini</p>
           ) : (
             todayRecords.slice().reverse().map((r) => (
               <div key={r.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-800/50">
-                <div>
-                  <p className="text-sm text-white">{r.studentName}</p>
-                  <p className="text-xs text-gray-500">{r.className}</p>
+                <div className="flex items-center gap-2">
+                  {r.type === 'masuk' ? <LogIn size={14} className="text-emerald-400" /> : <LogOut size={14} className="text-blue-400" />}
+                  <div>
+                    <p className="text-sm text-white">{r.studentName}</p>
+                    <p className="text-xs text-gray-500">{r.className}</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-300">{r.time}</p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                    r.status === 'hadir' ? 'bg-emerald-500/20 text-emerald-400' :
-                    r.status === 'izin' ? 'bg-yellow-500/20 text-yellow-400' :
-                    r.status === 'sakit' ? 'bg-orange-500/20 text-orange-400' : 'bg-red-500/20 text-red-400'
-                  }`}>{r.status}</span>
+                  <div className="flex items-center gap-1 justify-end">
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      r.type === 'masuk' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                    }`}>{r.type}</span>
+                    {r.parentNotified && <MessageCircle size={12} className="text-green-400" />}
+                  </div>
                 </div>
               </div>
             ))
