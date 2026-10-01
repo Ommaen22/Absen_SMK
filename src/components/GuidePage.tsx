@@ -417,13 +417,14 @@ function ScannerSection({ expandedSteps, toggleStep }: { expandedSteps: Set<stri
 
       <Step id="scanner-3" number={3} title="Gunakan di Aplikasi SIHADIR" expanded={expandedSteps.has('scanner-3')} onToggle={() => toggleStep('scanner-3')}>
         <ol className="list-decimal list-inside space-y-2">
-          <li>Buka halaman <strong>"Scan Absen Siswa"</strong> atau <strong>"Scan Absen Guru"</strong></li>
+          <li>Buka halaman <strong>"Scan Absensi"</strong> (satu halaman untuk siswa & guru)</li>
           <li>Pilih mode <strong>Masuk</strong> atau <strong>Pulang</strong></li>
           <li>Klik di area halaman (agar fokus aktif)</li>
-          <li>Arahkan scanner ke barcode kartu siswa/guru</li>
-          <li>Absensi otomatis tercatat! ✓</li>
+          <li>Arahkan scanner ke barcode kartu siswa (NIS) atau guru (NIP)</li>
+          <li>Sistem otomatis mendeteksi apakah itu siswa atau guru ✓</li>
+          <li>Absensi tercatat + notifikasi WA terkirim (untuk siswa)! ✓</li>
         </ol>
-        <InfoBox type="tip">💡 Tips: Pastikan halaman scan sudah terbuka dan cursor aktif sebelum scan.</InfoBox>
+        <InfoBox type="tip">💡 Tips: Scan barcode NIS untuk siswa, NIP untuk guru - semua di satu halaman!</InfoBox>
       </Step>
 
       <Step id="scanner-4" number={4} title="Buat Barcode/ID Card Siswa" expanded={expandedSteps.has('scanner-4')} onToggle={() => toggleStep('scanner-4')}>

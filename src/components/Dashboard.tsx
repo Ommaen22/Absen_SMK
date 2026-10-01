@@ -63,11 +63,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <div className="flex gap-3">
           <button onClick={() => onNavigate('scan')}
             className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
-            <ScanBarcode size={18} /> Absen Siswa
-          </button>
-          <button onClick={() => onNavigate('teacher-scan')}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-5 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20">
-            <UserCheck size={18} /> Absen Guru
+            <ScanBarcode size={18} /> Mulai Scan Absensi
           </button>
         </div>
       </div>
@@ -95,10 +91,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <QuickAction icon={<ScanBarcode size={24} />} title="Scan Siswa" description="Absen masuk/pulang siswa" onClick={() => onNavigate('scan')} color="emerald" />
-        <QuickAction icon={<UserCheck size={24} />} title="Scan Guru" description="Absen masuk/pulang guru" onClick={() => onNavigate('teacher-scan')} color="purple" />
-        <QuickAction icon={<TrendingUp size={24} />} title="Rekap Bulanan" description="Laporan kehadiran" onClick={() => onNavigate('monthly')} color="blue" />
+        <QuickAction icon={<ScanBarcode size={24} />} title="Scan Absensi" description="Absen siswa & guru (otomatis)" onClick={() => onNavigate('scan')} color="emerald" />
+        <QuickAction icon={<TrendingUp size={24} />} title="Rekap Bulanan" description="Laporan kehadiran siswa" onClick={() => onNavigate('monthly')} color="blue" />
         <QuickAction icon={<MessageCircle size={24} />} title="WhatsApp" description="Kelola notifikasi ortu" onClick={() => onNavigate('whatsapp')} color="green" />
+        <QuickAction icon={<GraduationCap size={24} />} title="Rekap Guru" description="Laporan kehadiran guru" onClick={() => onNavigate('teacher-monthly')} color="purple" />
       </div>
 
       {/* Recent Activity */}

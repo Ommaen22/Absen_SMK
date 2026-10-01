@@ -40,22 +40,16 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         {/* Dashboard */}
         <NavItem page="dashboard" label="Dashboard" icon={<LayoutDashboard size={18} />} current={currentPage} onClick={onNavigate} />
 
-        {/* Absensi Siswa */}
+        {/* Absensi */}
         <div className="pt-3 pb-1 px-3">
-          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Absensi Siswa</p>
+          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Absensi</p>
         </div>
-        <NavItem page="scan" label="Scan Absen Siswa" icon={<ScanBarcode size={18} />} current={currentPage} onClick={onNavigate} />
+        <NavItem page="scan" label="Scan Absensi" icon={<ScanBarcode size={18} />} current={currentPage} onClick={onNavigate} />
         <NavItem page="students" label="Data Siswa" icon={<Users size={18} />} current={currentPage} onClick={onNavigate} />
-        <NavItem page="monthly" label="Rekap Bulanan" icon={<CalendarDays size={18} />} current={currentPage} onClick={onNavigate} />
-        <NavItem page="yearly" label="Rekap Tahunan" icon={<CalendarRange size={18} />} current={currentPage} onClick={onNavigate} />
-
-        {/* Absensi Guru */}
-        <div className="pt-3 pb-1 px-3">
-          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Absensi Guru</p>
-        </div>
-        <NavItem page="teacher-scan" label="Scan Absen Guru" icon={<UserCheck size={18} />} current={currentPage} onClick={onNavigate} color="purple" />
         <NavItem page="teachers" label="Data Guru" icon={<BookOpen size={18} />} current={currentPage} onClick={onNavigate} color="purple" />
+        <NavItem page="monthly" label="Rekap Bulanan Siswa" icon={<CalendarDays size={18} />} current={currentPage} onClick={onNavigate} />
         <NavItem page="teacher-monthly" label="Rekap Bulanan Guru" icon={<ClipboardList size={18} />} current={currentPage} onClick={onNavigate} color="purple" />
+        <NavItem page="yearly" label="Rekap Tahunan" icon={<CalendarRange size={18} />} current={currentPage} onClick={onNavigate} />
 
         {/* Notifikasi & Data */}
         <div className="pt-3 pb-1 px-3">

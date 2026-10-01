@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { PageType } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import ScanPage from './components/ScanPage';
+import ScanPageUnified from './components/ScanPageUnified';
 import StudentManager from './components/StudentManager';
 import TeacherManager from './components/TeacherManager';
-import TeacherScanPage from './components/TeacherScanPage';
 import TeacherMonthlyRecap from './components/TeacherMonthlyRecap';
 import MonthlyRecap from './components/MonthlyRecap';
 import YearlyRecap from './components/YearlyRecap';
@@ -26,10 +25,9 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <Dashboard onNavigate={setCurrentPage} />;
-      case 'scan': return <ScanPage />;
+      case 'scan': return <ScanPageUnified />;
       case 'students': return <StudentManager />;
       case 'teachers': return <TeacherManager />;
-      case 'teacher-scan': return <TeacherScanPage />;
       case 'monthly': return <MonthlyRecap />;
       case 'yearly': return <YearlyRecap />;
       case 'teacher-monthly': return <TeacherMonthlyRecap />;

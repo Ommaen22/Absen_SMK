@@ -74,7 +74,7 @@ export interface AppSettings {
   schoolEndTime: string;
 }
 
-export type PageType = 'dashboard' | 'scan' | 'students' | 'teachers' | 'teacher-scan' | 'monthly' | 'yearly' | 'teacher-monthly' | 'data' | 'whatsapp' | 'settings' | 'guide';
+export type PageType = 'dashboard' | 'scan' | 'students' | 'teachers' | 'monthly' | 'yearly' | 'teacher-monthly' | 'data' | 'whatsapp' | 'settings' | 'guide';
 
 export interface NotificationLog {
   id: string;
