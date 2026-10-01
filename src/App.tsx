@@ -12,6 +12,7 @@ import YearlyRecap from './components/YearlyRecap';
 import DataManager from './components/DataManager';
 import WhatsAppPage from './components/WhatsAppPage';
 import SettingsPage from './components/SettingsPage';
+import GuidePage from './components/GuidePage';
 import { Menu, X } from 'lucide-react';
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
       case 'data': return <DataManager />;
       case 'whatsapp': return <WhatsAppPage />;
       case 'settings': return <SettingsPage />;
+      case 'guide': return <GuidePage />;
       default: return <Dashboard onNavigate={setCurrentPage} />;
     }
   };

@@ -11,7 +11,7 @@ import {
   MessageCircle,
   UserCheck,
   BookOpen,
-  ClipboardList
+  ClipboardList,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -64,6 +64,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         <NavItem page="whatsapp" label="Notifikasi WhatsApp" icon={<MessageCircle size={18} />} current={currentPage} onClick={onNavigate} color="green" />
         <NavItem page="data" label="Import/Export" icon={<Database size={18} />} current={currentPage} onClick={onNavigate} />
         <NavItem page="settings" label="Pengaturan" icon={<Settings size={18} />} current={currentPage} onClick={onNavigate} />
+        <NavItem page="guide" label="Panduan Lengkap" icon={<BookOpen size={18} />} current={currentPage} onClick={onNavigate} color="green" />
       </nav>
 
       {/* Footer */}
